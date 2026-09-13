@@ -1,0 +1,72 @@
+# ── Personal financial data — never commit ────────────────────────────────────
+data/processed/data.json
+data/processed/manifest.json
+data/processed/receipts.db
+data/processed/receipts.json
+data/processed/receipts_manifest.json
+data/raw/
+data/receipts/
+
+# Downloads inbox (payslips, bank statements, receipt photos)
+downloads/payslips/
+downloads/bank_statements/
+downloads/kassenbons/
+
+# Generated standalone dashboard (embeds personal data inline)
+dashboard/standalone.html
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── IDE / editors ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Logs / temp ───────────────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+scratchpad/
+
+# ── Keep folder structure ─────────────────────────────────────────────────────
+!data/processed/.gitkeep
+!data/raw/.gitkeep
+!data/receipts/.gitkeep
+!downloads/payslips/.gitkeep
+!downloads/bank_statements/.gitkeep
+!downloads/kassenbons/.gitkeep
+xclude/
