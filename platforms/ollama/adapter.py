@@ -13,16 +13,24 @@ Configure via env vars:
     OLLAMA_BASE_URL — base URL   (default: http://localhost:11434)
 
 Public interface (identical shape to other adapters):
-    extract_image(image_path, prompt)       -> str
-    extract_pdf_text(text, prompt)          -> str
-    extract_pdf_batch(texts, batch_prompt)  -> list[dict]
+    extract_image(image_path, prompt)  -> str
+    extract_pdf_text(text, prompt)     -> str
+    extract_pdf_batch(texts)           -> list[dict]
 """
 
 import base64
 import json
 import os
 import re
+import sys
 from pathlib import Path
+
+# Ensure project root is on sys.path so core.* resolves correctly
+_ROOT = Path(__file__).parent.parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from core.prompts import RECEIPT_TEXT_PROMPT
 
 OLLAMA_MODEL    = os.environ.get("OLLAMA_MODEL",    "qwen2.5-vl")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -114,10 +122,10 @@ def extract_pdf_text(text: str, prompt: str) -> str:
     }])
 
 
-def extract_pdf_batch(texts: list[str], batch_prompt: str) -> list[dict]:
+def extract_pdf_batch(texts: list[str]) -> list[dict]:
     """Serial extraction across multiple PDF texts.
 
     Ollama runs locally so serial API calls are fast enough — batching adds
     no benefit. Uses _parse_json() since Ollama has no response_schema support.
     """
-    return [_parse_json(extract_pdf_text(t, batch_prompt)) for t in texts]
+    return [_parse_json(extract_pdf_text(t, RECEIPT_TEXT_PROMPT)) for t in texts]

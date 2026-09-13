@@ -7,6 +7,25 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-13
+
+Platform adapter architecture: pluggable AI backends (Claude · Gemini · Ollama).
+
+### Added
+- `core/prompts.py` — shared receipt extraction prompts used by all adapters; single source of truth for `RECEIPT_PROMPT`, `RECEIPT_TEXT_PROMPT`, and `_build_batch_prompt`.
+- `core/schemas.py` — Pydantic v2 models (`ReceiptData`, `ReceiptItem`) imported by all adapters; `vat: dict | None` because keys `"7pct"` / `"19pct"` are not valid Python identifiers.
+- `core/adapter.py` — platform dispatcher; selects backend via `FINANZIQ_BACKEND` env var or auto-detects in priority order: `GEMINI_API_KEY` → antigravity · `ANTHROPIC_API_KEY` / `claude` on PATH → claude · `agy` on PATH → antigravity · `ollama` on PATH → ollama.
+- `platforms/claude/adapter.py` — Anthropic SDK + `claude` CLI backend; image resize via Pillow; CLI batch mode sends up to 5 PDFs per subprocess call with per-chunk prompt rebuilding.
+- `platforms/antigravity/adapter.py` — Gemini API backend via `google-genai` SDK; `response_schema=ReceiptData` guarantees valid JSON at the API level, eliminating regex parsing; free tier: 1,500 req/day via aistudio.google.com.
+- `platforms/ollama/adapter.py` — local Ollama backend via OpenAI-compatible HTTP API at `localhost:11434`; default model `qwen2.5-vl`; 100% local, no data leaves the machine.
+- `platforms/antigravity/AGENTS.md` — project guide for the Gemini backend: env vars, workflow, key facts, adapter architecture.
+- `tests/test_core.py` + `tests/conftest.py` — 59 unit tests: adapter dispatch, receipt JSON parsing, batch prompt builder, receipt validation, PDF classify logic, Pydantic schema validation. All deterministic (no AI calls).
+
+### Changed
+- `scripts/process_receipts.py` — rewritten to use `core.adapter.get_adapter()` instead of inline Claude-only backend detection; supports all three backends transparently.
+- `scripts/process_payslip.py` — updated to use `core.adapter.get_adapter()` for AI fallback; removes `_sdk_call()` / `_cli_call()` / `_backend()` inline logic.
+- `scripts/parsers/receipt_parser.py` — removed dead code (old `backend: str` API, direct CLI/SDK calls); prompts moved to `core/prompts.py`; retains JSON parsing helpers, PDF text extraction, and `validate_receipt()`.
+
 ## [1.2.0] - 2026-09-13
 
 Categorizer improvements, project documentation, and git initialisation.
@@ -98,7 +117,8 @@ Initial build: German payslip and bank statement parsing, categorization, and da
 - `scripts/organize_downloads.py` — moves processed PDFs from `downloads/` into
   `data/raw/YYYY/MM/` archive.
 
-[Unreleased]: https://github.com/kalaiguna/finanziq/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/kalaiguna/finanziq/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/kalaiguna/finanziq/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/kalaiguna/finanziq/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/kalaiguna/finanziq/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/kalaiguna/finanziq/releases/tag/v1.0.0

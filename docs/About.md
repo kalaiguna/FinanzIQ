@@ -9,10 +9,13 @@ Most personal finance tools require you to manually enter transactions, trust a 
 ## Core benefits
 
 ### 1. Zero manual data entry
-Drop PDFs into a folder and run one command. Payslips, bank statements, and receipts are all parsed automatically. Claude AI reads even photo receipts, extracting every line item.
+Drop PDFs into a folder and run one command. Payslips, bank statements, and receipts are all parsed automatically. AI Vision reads even photo receipts, extracting every line item.
 
-### 2. Complete privacy — no cloud, no login
-All processing happens on your machine. Your PDFs never leave your computer. No bank credentials, no OAuth, no third-party sync. Data is stored in a plain JSON file and SQLite database you can inspect anytime.
+### 2. Your data, your control
+No bank credentials, no OAuth, no third-party app storing your complete financial history. All extracted data lives in plain files on your machine — a JSON file and a SQLite database you can inspect anytime. The AI extraction backend is your choice:
+- **Ollama** — 100% local; receipt photos and PDFs never leave your machine
+- **Claude** (CLI or SDK) — uses your Anthropic subscription; data sent to Anthropic during extraction only
+- **Gemini** (free tier) — data sent to Google during extraction only; 1,500 req/day free via aistudio.google.com
 
 ### 3. Item-level receipt tracking
 Unlike bank statements (which only show "REWE €45.20"), FinanzIQ extracts what you actually bought: 2× Avocados, 1× Coconut milk, 1× Mustard. This is the only way to know whether you're spending more on Dairy vs Produce vs Snacks over time.
@@ -92,9 +95,9 @@ The standalone dashboard embeds all data directly into the HTML file. Open it on
 
 - **Employees with German payslips (DATEV format)** — full payslip parsing with deduction breakdown
 - **Regular grocery shoppers** — item-level receipt tracking reveals actual food spending habits
-- **People who want financial clarity without giving data to a bank or fintech app**
+- **People who want financial clarity without giving data to a bank or fintech app** — no third-party ever holds your full financial picture
 - **Anyone building a public version** — code is employer/bank agnostic and shareable
 
 ---
 
-*All data stays local. All insights are yours.*
+*Your financial data stays on your machine. Your insights are yours.*

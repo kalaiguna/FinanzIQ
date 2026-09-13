@@ -6,9 +6,9 @@ Supports two sub-backends (auto-selected at runtime):
   cli — local `claude` CLI via stream-json (uses Claude Code subscription)
 
 Public interface:
-  extract_image(image_path, prompt)        -> str          (raw LLM response)
-  extract_pdf_text(text, prompt)           -> str          (raw LLM response)
-  extract_pdf_batch(texts, batch_prompt)   -> list[dict]   (parsed; CLI-optimised)
+  extract_image(image_path, prompt)  -> str        (raw LLM response)
+  extract_pdf_text(text, prompt)     -> str        (raw LLM response)
+  extract_pdf_batch(texts)           -> list[dict] (parsed; CLI-optimised)
 """
 
 import base64
@@ -17,7 +17,15 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+# Ensure project root is on sys.path so core.* resolves correctly
+_ROOT = Path(__file__).parent.parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from core.prompts import RECEIPT_TEXT_PROMPT, _build_batch_prompt
 
 RECEIPT_MODEL   = os.environ.get("RECEIPT_MODEL", "claude-haiku-4-5-20251001")
 PDF_BATCH_SIZE  = 5
@@ -201,10 +209,10 @@ def _cli_extract_text(text: str, prompt: str) -> str:
     return output
 
 
-def _cli_batch_chunk(texts: list[str], batch_prompt: str) -> list[dict]:
+def _cli_batch_chunk(texts: list[str], chunk_prompt: str) -> list[dict]:
     """One CLI subprocess call for a pre-sized chunk. Returns parsed list aligned with texts."""
     result = subprocess.run(
-        ["claude", "-p", batch_prompt],
+        ["claude", "-p", chunk_prompt],
         capture_output=True, text=True, timeout=600,
         encoding="utf-8", errors="replace",
     )
@@ -233,16 +241,15 @@ def extract_pdf_text(text: str, prompt: str) -> str:
     return _sdk_extract_text(text, prompt) if backend == "sdk" else _cli_extract_text(text, prompt)
 
 
-def extract_pdf_batch(texts: list[str], batch_prompt: str) -> list[dict]:
-    """Batch-extract multiple PDF receipts.
+def extract_pdf_batch(texts: list[str]) -> list[dict]:
+    """Batch-extract multiple PDF receipts. Returns parsed list aligned with texts.
 
-    CLI: sends up to PDF_BATCH_SIZE receipts per subprocess call (efficient).
-    SDK: serial calls — SDK latency is low and batching adds no benefit.
-    Returns parsed list of dicts aligned with the input texts list.
+    CLI: sends up to PDF_BATCH_SIZE receipts per subprocess call — efficient.
+    SDK: serial single-receipt calls — SDK latency makes batching unnecessary.
     """
     backend = _backend()
     if backend == "sdk":
-        return [_parse_json(_sdk_extract_text(t, batch_prompt)) for t in texts]
+        return [_parse_json(_sdk_extract_text(t, RECEIPT_TEXT_PROMPT)) for t in texts]
 
     results = []
     for i in range(0, len(texts), PDF_BATCH_SIZE):
@@ -251,5 +258,6 @@ def extract_pdf_batch(texts: list[str], batch_prompt: str) -> list[dict]:
             t[:MAX_PER_RECEIPT] + "\n[... truncated ...]" if len(t) > MAX_PER_RECEIPT else t
             for t in chunk
         ]
-        results.extend(_cli_batch_chunk(truncated, batch_prompt))
+        chunk_prompt = _build_batch_prompt(truncated)
+        results.extend(_cli_batch_chunk(truncated, chunk_prompt))
     return results

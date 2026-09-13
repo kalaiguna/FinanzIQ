@@ -8,9 +8,9 @@ response_schema=ReceiptData guarantees valid JSON at the API level,
 eliminating the regex/brace-walk extraction needed for Claude output.
 
 Public interface (identical shape to platforms/claude/adapter.py):
-  extract_image(image_path, prompt)        -> str          (valid JSON string)
-  extract_pdf_text(text, prompt)           -> str          (valid JSON string)
-  extract_pdf_batch(texts, batch_prompt)   -> list[dict]   (serial; parsed)
+  extract_image(image_path, prompt)  -> str        (valid JSON string)
+  extract_pdf_text(text, prompt)     -> str        (valid JSON string)
+  extract_pdf_batch(texts)           -> list[dict] (serial; parsed)
 """
 
 import json
@@ -18,12 +18,13 @@ import os
 import sys
 from pathlib import Path
 
-# Ensure project root is on sys.path so core.schemas resolves correctly
+# Ensure project root is on sys.path so core.* resolves correctly
 _ROOT = Path(__file__).parent.parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core.schemas import ReceiptData
+from core.prompts import RECEIPT_TEXT_PROMPT
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -94,13 +95,12 @@ def extract_pdf_text(text: str, prompt: str) -> str:
     return response.text
 
 
-def extract_pdf_batch(texts: list[str], batch_prompt: str) -> list[dict]:
+def extract_pdf_batch(texts: list[str]) -> list[dict]:
     """Serial extraction across multiple PDF texts.
 
     Gemini API calls are direct (no subprocess overhead), so serial is fast
     enough — batching adds no meaningful benefit here.
 
-    response_schema=ReceiptData enforces single-receipt output per call,
-    regardless of what the prompt says about arrays.
+    response_schema=ReceiptData enforces single-receipt output per call.
     """
-    return [json.loads(extract_pdf_text(t, batch_prompt)) for t in texts]
+    return [json.loads(extract_pdf_text(t, RECEIPT_TEXT_PROMPT)) for t in texts]

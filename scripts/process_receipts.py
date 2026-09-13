@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-process_receipts.py — Scan receipts/ inbox, extract data via Claude Vision,
+process_receipts.py — Scan kassenbons/ inbox, extract data via AI Vision,
 save to SQLite, and archive images.
+
+Backend is selected automatically via FINANZIQ_BACKEND env var or auto-detected.
+See core/adapter.py for supported backends: claude | antigravity | ollama
 
 Usage:
     python scripts/process_receipts.py
@@ -11,34 +14,40 @@ Usage:
 
 import argparse
 import json
-import os
-import shutil
 import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
-
-
-def _backend() -> str:
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        return "sdk"
-    if shutil.which("claude"):
-        return "cli"
-    return "none"
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
+# ── Paths & imports ───────────────────────────────────────────────────────────
+ROOT     = Path(__file__).parent.parent
+_SCRIPTS = Path(__file__).parent
+
+for _p in (str(_SCRIPTS), str(ROOT)):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+from core.adapter import get_adapter
+from core.prompts import RECEIPT_PROMPT, RECEIPT_TEXT_PROMPT
+from parsers.receipt_parser import (
+    _extract_json,
+    _pdf_text,
+    validate_receipt,
+    PDF_BATCH_SIZE,
+)
+
 # ── Config ────────────────────────────────────────────────────────────────────
-ROOT = Path(__file__).parent.parent
-RECEIPTS_INBOX = ROOT / "downloads" / "kassenbons"
+RECEIPTS_INBOX   = ROOT / "downloads" / "kassenbons"
 RECEIPTS_ARCHIVE = ROOT / "data" / "receipts"
-PROCESSED_DIR = ROOT / "data" / "processed"
-MANIFEST_FILE = PROCESSED_DIR / "receipts_manifest.json"
-DB_FILE = PROCESSED_DIR / "receipts.db"
-RECEIPTS_JSON = PROCESSED_DIR / "receipts.json"
+PROCESSED_DIR    = ROOT / "data" / "processed"
+MANIFEST_FILE    = PROCESSED_DIR / "receipts_manifest.json"
+DB_FILE          = PROCESSED_DIR / "receipts.db"
+RECEIPTS_JSON    = PROCESSED_DIR / "receipts.json"
 
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 RECEIPTS_INBOX.mkdir(parents=True, exist_ok=True)
@@ -167,6 +176,7 @@ def archive_image(image_path: Path, date_str: str | None) -> Path:
         while dest.exists():
             dest = dest_dir / f"{stem}_{counter}{suffix}"
             counter += 1
+    import shutil
     shutil.move(str(image_path), str(dest))
     return dest
 
@@ -189,7 +199,8 @@ def write_receipts_json(conn: sqlite3.Connection):
         rec["items"] = [
             dict(item)
             for item in conn.execute(
-                "SELECT raw_name, clean_name, category, qty, unit_price, total, vat_rate FROM items WHERE receipt_id=?",
+                "SELECT raw_name, clean_name, category, qty, unit_price, total, vat_rate "
+                "FROM items WHERE receipt_id=?",
                 (rec["id"],)
             ).fetchall()
         ]
@@ -202,25 +213,23 @@ def write_receipts_json(conn: sqlite3.Connection):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Process receipt images with Claude Vision")
+    parser = argparse.ArgumentParser(description="Process receipt images via AI Vision")
     parser.add_argument("--force", action="store_true", help="Reprocess already-seen files")
     parser.add_argument("--dir", type=Path, default=RECEIPTS_INBOX,
                         help="Folder to scan (default: downloads/kassenbons/)")
     args = parser.parse_args()
 
-    backend = _backend()
-    if backend == "none":
-        print("ERROR: No extraction backend available.")
-        print("  Option A: Set ANTHROPIC_API_KEY and install the anthropic package.")
-        print("  Option B: Install Claude Code CLI  ->  https://claude.ai/code")
+    # ── Select backend ────────────────────────────────────────────────────────
+    try:
+        adapter = get_adapter()
+    except RuntimeError as e:
+        print(f"ERROR: {e}")
         sys.exit(1)
 
-    if backend == "cli":
-        print("No ANTHROPIC_API_KEY found — using local `claude` CLI (Claude Code) as backend.\n")
+    backend_name = adapter.__name__.split(".")[-2]  # "claude" | "antigravity" | "ollama"
+    print(f"Backend: {backend_name}\n")
 
-    sys.path.insert(0, str(Path(__file__).parent))
-    from parsers.receipt_parser import extract_receipt, extract_receipts_pdf_batch, validate_receipt
-
+    # ── Scan inbox ────────────────────────────────────────────────────────────
     manifest = load_manifest()
     conn = sqlite3.connect(DB_FILE)
     init_db(conn)
@@ -238,10 +247,9 @@ def main():
     new_pdfs   = [p for p in new_receipts if p.suffix.lower() == ".pdf"]
     new_images = [p for p in new_receipts if p.suffix.lower() != ".pdf"]
 
-    batch_note = f" (batched)" if backend == "cli" and len(new_pdfs) > 1 else ""
     print(f"Found {len(receipts)} file(s) — {len(new_receipts)} new, {skipped} already processed")
     if new_pdfs:
-        print(f"  {len(new_pdfs)} PDF(s){batch_note}, {len(new_images)} image(s)\n")
+        print(f"  {len(new_pdfs)} PDF(s), {len(new_images)} image(s)\n")
     else:
         print()
 
@@ -256,12 +264,12 @@ def main():
             dest = archive_image(image_path, data.get("date"))
             manifest["processed_files"].append(image_path.name)
             save_manifest(manifest)
-            chain = data.get("store_chain") or data.get("store") or "?"
-            date  = data.get("date") or "?"
-            total = data.get("total")
+            chain     = data.get("store_chain") or data.get("store") or "?"
+            date      = data.get("date") or "?"
+            total     = data.get("total")
             total_str = f"€{total:.2f}" if total is not None else "?"
-            n_items = len(data.get("items") or [])
-            val_flag = "" if ok else f"  [!] {note}"
+            n_items   = len(data.get("items") or [])
+            val_flag  = "" if ok else f"  [!] {note}"
             print(f"  OK  {chain} | {date} | {total_str} | {n_items} items{val_flag}")
             print(f"      archived -> {dest.relative_to(ROOT)}")
             processed += 1
@@ -271,33 +279,49 @@ def main():
             traceback.print_exc()
             errors += 1
 
-    # ── PDFs: batch in one call (CLI) or serial (SDK) ───────────────────────
+    # ── PDFs ──────────────────────────────────────────────────────────────────
     if new_pdfs:
-        if backend == "cli" and len(new_pdfs) > 1:
-            from parsers.receipt_parser import PDF_BATCH_SIZE
-            n_chunks = (len(new_pdfs) + PDF_BATCH_SIZE - 1) // PDF_BATCH_SIZE
+        use_batch = backend_name == "claude" and len(new_pdfs) > 1
+        if use_batch:
+            pdf_texts = [_pdf_text(p) for p in new_pdfs]
+            n_chunks  = (len(new_pdfs) + PDF_BATCH_SIZE - 1) // PDF_BATCH_SIZE
             print(f"  Sending {len(new_pdfs)} PDF(s) in {n_chunks} batch call(s) …")
-        try:
-            results = extract_receipts_pdf_batch(new_pdfs, backend=backend)
-            for path, data in zip(new_pdfs, results):
-                _save_one(data, path)
-        except Exception as e:
-            import traceback
-            print(f"  Batch failed ({e}), falling back to serial …")
-            traceback.print_exc()
+            try:
+                results = adapter.extract_pdf_batch(pdf_texts)
+                for path, data in zip(new_pdfs, results):
+                    _save_one(data, path)
+            except Exception as e:
+                import traceback
+                print(f"  Batch failed ({e}), falling back to serial …")
+                traceback.print_exc()
+                for path in new_pdfs:
+                    print(f"  Processing [PDF]: {path.name}")
+                    try:
+                        raw = adapter.extract_pdf_text(_pdf_text(path), RECEIPT_TEXT_PROMPT)
+                        _save_one(_extract_json(raw), path)
+                    except Exception as e2:
+                        print(f"  ERROR: {path.name}: {e2}")
+                        errors += 1
+        else:
+            # Serial: Gemini/Ollama, or single PDF for Claude
             for path in new_pdfs:
                 print(f"  Processing [PDF]: {path.name}")
                 try:
-                    _save_one(extract_receipt(path, backend=backend), path)
-                except Exception as e2:
-                    print(f"  ERROR: {path.name}: {e2}")
+                    raw = adapter.extract_pdf_text(_pdf_text(path), RECEIPT_TEXT_PROMPT)
+                    _save_one(_extract_json(raw), path)
+                except Exception as e:
+                    import traceback
+                    print(f"  ERROR: {path.name}: {e}")
+                    traceback.print_exc()
                     errors += 1
 
-    # ── Images: always one at a time (stream-json per image) ────────────────
+    # ── Images: always serial ─────────────────────────────────────────────────
     for image_path in new_images:
         print(f"  Processing [image]: {image_path.name}")
         try:
-            _save_one(extract_receipt(image_path, backend=backend), image_path)
+            raw  = adapter.extract_image(image_path, RECEIPT_PROMPT)
+            data = _extract_json(raw)
+            _save_one(data, image_path)
         except Exception as e:
             import traceback
             print(f"  ERROR: {image_path.name}: {e}")
