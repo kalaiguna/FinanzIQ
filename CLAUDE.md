@@ -137,11 +137,6 @@ Rules checked early take priority — Dining comes before Insurance so `'allianz
 - `applyFilters()` resets `activeCatFilter = 'all'` to avoid the category pill staying active across year changes
 - Receipts tab reads from `receipts.json` (live) or `window.__EMBEDDED_RECEIPTS__` (standalone); year filter scopes by `receipt.date.startsWith(year)`
 
-## Data scope
-
-Bank statements and payslips from **July 2022 onwards** only. Pre-July 2022 data was removed.
-Receipts from **April 2026 onwards** (earliest available Kassenbon).
-
 ## What the parser does NOT handle
 
 - SBI (State Bank of India) statements — different format, no parser written

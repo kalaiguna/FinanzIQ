@@ -157,8 +157,6 @@ Assigned by Claude during extraction. No manual rules — re-run `process_receip
 | Digital receipts | Rossmann, DM, Penny, and other stores with PDF e-receipts |
 | Other banks / employers | Not supported |
 
-Data scope: **July 2022 onwards**.
-
 ---
 
 ## Privacy

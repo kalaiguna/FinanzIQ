@@ -97,9 +97,8 @@ Initial build: German payslip and bank statement parsing, categorization, and da
   live dashboard.
 - `scripts/organize_downloads.py` — moves processed PDFs from `downloads/` into
   `data/raw/YYYY/MM/` archive.
-- Data scope: bank statements and payslips from **July 2022 onwards**.
 
-[Unreleased]: https://github.com/g-aa-chandrasekaran/finanziq/compare/v1.2.0...HEAD
-[1.2.0]: https://github.com/g-aa-chandrasekaran/finanziq/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/g-aa-chandrasekaran/finanziq/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/g-aa-chandrasekaran/finanziq/releases/tag/v1.0.0
+[Unreleased]: https://github.com/kalaiguna/finanziq/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/kalaiguna/finanziq/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/kalaiguna/finanziq/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/kalaiguna/finanziq/releases/tag/v1.0.0

@@ -63,9 +63,3 @@ set FINANZIQ_BACKEND=ollama        ← local Ollama model
 `scripts/parsers/categorizer.py` — ordered `(keywords, category)` tuples. First match wins.
 Rule order matters: put more specific rules before broader ones (e.g. `allianz gastro` before `allianz`).
 
----
-
-## Data scope
-
-- Bank statements and payslips: **July 2022 onwards**
-- Receipts: **April 2026 onwards** (earliest available Kassenbon)
