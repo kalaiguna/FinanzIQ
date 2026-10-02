@@ -23,6 +23,7 @@ RULES = [
       'hasan kayatuz',          # local Turkish butcher/grocer Bad Vilbel
       'toprak',                 # Turkish grocery Frankfurt
       'mh muller handels',      # local market Bad Vilbel
+      'rumpf',                  # Bäckerei Konditorei Café Uwe Rumpf — take-home bakery Bad Vilbel
       ], 'Groceries'),
     # Dining
     (['kfc', 'maydonoz', 'kaiyo', 'mcdonald', 'kentucky fried',
@@ -84,6 +85,7 @@ RULES = [
       'bp ', 'jet ', 'sixt', 'europcar', 'hertz', 'flughafen', 'airport',
       'ryanair', 'easyjet', 'lufthansa', 'eurowings', 'condor', 'check24 flug',
       'malta public', 'mopla',
+      'paypal .dbvertriebg', 'dbvertriebg',  # Deutsche Bahn tickets via PayPal
       'vgf ', 'transdev',       # Frankfurt & regional public transport
       'taxi ',                  # catches Taxi Schumann, Taxi Gaida, SumUp .Taxi…
       'gozo channel',           # Malta ferry
@@ -101,7 +103,7 @@ RULES = [
       'pharmacy', 'doktor', 'dr.', 'krankenhaus', 'klinik',
       'optik', 'güldener', 'fielmann', 'sanikonzept', 'zahnarzt', 'physio',
       'sanitätshaus', 'kinderarztprax',
-      'aäa gmbh',               # medical practice Bad Vilbel
+      'aäa gmbh', 'aã„a',        # medical practice Bad Vilbel (incl. cp1252-corrupted form)
       ], 'Healthcare'),
     # Insurance
     (['versicherung', 'allianz', 'huk', 'axa', 'signal iduna', 'ergo',

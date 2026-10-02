@@ -66,7 +66,7 @@ def load_output() -> dict:
 
 
 def save_output(data: dict):
-    OUTPUT_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    OUTPUT_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def pdf_to_text(path: Path) -> str:
