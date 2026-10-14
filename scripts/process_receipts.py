@@ -55,6 +55,31 @@ RECEIPTS_ARCHIVE.mkdir(parents=True, exist_ok=True)
 
 RECEIPT_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
 
+# ── Store name normalisation ──────────────────────────────────────────────────
+# Maps lowercase variants → canonical chain name. First prefix match wins.
+_CHAIN_CANONICAL: list[tuple[str, str]] = [
+    ("penny",       "Penny"),
+    ("herkules",    "Herkules"),
+    ("rossmann",    "Rossmann"),
+    ("rewe",        "REWE"),
+    ("edeka",       "EDEKA"),
+    ("aldi",        "Aldi"),
+    ("lidl",        "Lidl"),
+    ("dm",          "dm"),
+    ("woolworth",   "Woolworth"),
+    ("tedi",        "TEDi"),
+    ("primark",     "Primark"),
+]
+
+def _normalize_chain(name: str | None) -> str | None:
+    if not name:
+        return name
+    lower = name.strip().lower()
+    for prefix, canonical in _CHAIN_CANONICAL:
+        if lower.startswith(prefix) or prefix in lower:
+            return canonical
+    return name.strip()
+
 # ── Database ──────────────────────────────────────────────────────────────────
 
 def init_db(conn: sqlite3.Connection):
@@ -107,7 +132,7 @@ def save_to_db(conn: sqlite3.Connection, data: dict, filename: str,
         (
             filename,
             data.get("store"),
-            data.get("store_chain"),
+            _normalize_chain(data.get("store_chain")),
             data.get("address"),
             data.get("date"),
             data.get("time"),
