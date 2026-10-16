@@ -571,6 +571,12 @@
         <div id="top-merchants"></div>
       </div>
     </div>
+    <div class="chart-grid" style="grid-template-columns:1fr">
+      <div class="chart-card full">
+        <div class="chart-title">Spend by Store — All Time (from bank transactions)</div>
+        <div class="chart-wrap" style="height:320px"><canvas id="storeSpendChart"></canvas></div>
+      </div>
+    </div>
   </div>
 
   <!-- ═══════ TRANSACTIONS ═══════ -->
@@ -1256,6 +1262,7 @@ function renderSpendingTab() {
 
   // Daily timeline
   destroyChart('dailySpendChart');
+  destroyChart('storeSpendChart');
   const dailyEntries = Object.entries(byDay).sort(([a],[b])=>a.localeCompare(b));
   new Chart(document.getElementById('dailySpendChart'), {
     type: 'bar',
@@ -1298,6 +1305,52 @@ function renderSpendingTab() {
         <div class="progress-fill" style="width:${(v/maxM*100).toFixed(1)}%;background:${CAT_COLORS[exps.find(t=>t.merchant===m)?.category]||'var(--accent)'}"></div>
       </div>
     </div>`).join('');
+
+  // Spend by Store — normalise raw bank merchant strings to chain names
+  function normalizeChain(raw) {
+    if (!raw) return 'Other';
+    const s = raw.toLowerCase();
+    if (s.includes('herkules'))          return 'Herkules';
+    if (s.includes('penny'))             return 'Penny';
+    if (s.includes('lidl'))              return 'Lidl';
+    if (s.includes('rewe'))              return 'REWE';
+    if (s.includes('aldi'))              return 'Aldi';
+    if (s.includes('rossmann'))          return 'Rossmann';
+    if (s.includes('dm ') || s.includes('dm-') || s.startsWith('dm'))
+                                         return 'dm';
+    if (s.includes('edeka') || s.includes('e center')) return 'EDEKA';
+    if (s.includes('woolworth'))         return 'Woolworth';
+    if (s.includes('tedi'))              return 'TEDi';
+    if (s.includes('primark'))           return 'Primark';
+    if (s.includes('spicelands'))        return 'Spicelands';
+    if (s.includes('bereket'))           return 'Bereket';
+    if (s.includes('baris'))             return 'Baris Markt';
+    if (s.includes('go asia'))           return 'Go Asia';
+    if (s.includes('zam zam'))           return 'Zam Zam';
+    if (s.includes('jamoona'))           return 'Jamoona';
+    if (s.includes('anusch'))            return 'Anusch';
+    if (s.includes('saravanaa') || s.includes('saravana')) return 'Saravanaa Bhavan';
+    return null; // exclude unrecognised merchants
+  }
+
+  const storeSpend = {};
+  exps.forEach(t => {
+    const chain = normalizeChain(t.merchant || t.description || '');
+    if (chain) storeSpend[chain] = (storeSpend[chain] || 0) + Math.abs(t.amount);
+  });
+  const storeEntries = Object.entries(storeSpend).sort((a,b) => b[1]-a[1]);
+  const storeColors = ['#6c63ff','#ff6b6b','#ffa94d','#51cf66','#339af0','#f06595','#74c0fc',
+                       '#a9e34b','#ff8787','#9775fa','#63e6be','#fcc2d7'];
+  new Chart(document.getElementById('storeSpendChart'), {
+    type: 'bar',
+    data: {
+      labels: storeEntries.map(([s]) => s),
+      datasets: [{ label: 'Total Spent', data: storeEntries.map(([,v]) => v.toFixed(2)),
+        backgroundColor: storeEntries.map((_, i) => storeColors[i % storeColors.length]),
+        borderRadius: 6 }]
+    },
+    options: { ...chartOpts({ yCallback: v => '€' + v }), indexAxis: 'y' }
+  });
 }
 
 // ═══════════════════════════════════════════════════════
